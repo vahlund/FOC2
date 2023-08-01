@@ -166,7 +166,7 @@ A full control frame has a 64-bit payload.
 
 Field | Length | Value
 ------------ | ------------- | -------------
-Position | 16b | Position set-point in 1/10 degrees
+Position | 16b | Position set-point in degrees
 Velocity | 16b | Velocity set-point in degrees per second
 Torque | 16b | Torque current feed-forward in mA
 Kp | 8b | Position control
@@ -180,7 +180,7 @@ A 48-bit control frame contains :
 
 Field | Length | Value
 ------------ | ------------- | -------------
-Position | 16b | Position set-point in 1/10 degrees
+Position | 16b | Position set-point in degrees
 Velocity | 16b | Velocity set-point in degrees per second
 Kp | 8b | Position control
 Kd | 8b | Velocity control
@@ -189,7 +189,7 @@ A 32-bit control frame contains :
 
 Field | Length | Value
 ------------ | ------------- | -------------
-Position | 16b | Position set-point in 1/10 degrees
+Position | 16b | Position set-point in degrees
 Velocity | 16b | Velocity set-point in degrees per second
 
 A 16-bit control frame contains :
@@ -204,5 +204,5 @@ A 32-bit feedback frame contains :
 
 Field | Length | Value
 ------------ | ------------- | -------------
-Position | 16b | Present position in 1/10 degrees
+Position | 16b | Present position in degrees
 Torque | 16b | Present torque current in mA

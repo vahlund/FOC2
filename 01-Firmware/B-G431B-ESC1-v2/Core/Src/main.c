@@ -431,8 +431,8 @@ int main(void)
 				if(last_mode!=REG_CONTROL_MODE_POSITION_VELOCITY_TORQUE)
 				{
 					// set goal position to present position to avoid mechanical glicth
-					regs[REG_GOAL_POSITION_DEG_L] = LOW_BYTE((int16_t)(10.0f*positionSensor_getDegreeMultiturn()));
-					regs[REG_GOAL_POSITION_DEG_H] = HIGH_BYTE((int16_t)(10.0f*positionSensor_getDegreeMultiturn()));
+					regs[REG_GOAL_POSITION_DEG_L] = LOW_BYTE((int16_t)(1.0f*positionSensor_getDegreeMultiturn()));
+					regs[REG_GOAL_POSITION_DEG_H] = HIGH_BYTE((int16_t)(1.0f*positionSensor_getDegreeMultiturn()));
 					// reset goal velocity
 					regs[REG_GOAL_VELOCITY_DPS_L] = 0;
 					regs[REG_GOAL_VELOCITY_DPS_H] = 0;
@@ -453,7 +453,7 @@ int main(void)
 				}
 				{
 					// compute position set-point from goal and EEPROM position limits
-					float const goal_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_GOAL_POSITION_DEG_L],regs[REG_GOAL_POSITION_DEG_H])))/10.0f;
+					float const goal_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_GOAL_POSITION_DEG_L],regs[REG_GOAL_POSITION_DEG_H])))/1.0f;
 					float const reg_min_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_MIN_POSITION_DEG_L],regs[REG_MIN_POSITION_DEG_H])));
 					float const reg_max_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_MAX_POSITION_DEG_L],regs[REG_MAX_POSITION_DEG_H])));
 					setpoint_position_deg = fconstrain(goal_position_deg,reg_min_position_deg,reg_max_position_deg);
@@ -590,8 +590,8 @@ int main(void)
 		//uint16_t t_end = __HAL_TIM_GET_COUNTER(&htim6);
 
 		// RAM Update
-		regs[REG_PRESENT_POSITION_DEG_L] = LOW_BYTE((int16_t)(positionSensor_getDegreeMultiturn()*10.0f));
-		regs[REG_PRESENT_POSITION_DEG_H] = HIGH_BYTE((int16_t)(positionSensor_getDegreeMultiturn()*10.0f));
+		regs[REG_PRESENT_POSITION_DEG_L] = LOW_BYTE((int16_t)(positionSensor_getDegreeMultiturn()*1.0f));
+		regs[REG_PRESENT_POSITION_DEG_H] = HIGH_BYTE((int16_t)(positionSensor_getDegreeMultiturn()*1.0f));
 		regs[REG_PRESENT_VELOCITY_DPS_L] = LOW_BYTE((int16_t)(positionSensor_getVelocityDegree()*1.0f));
 		regs[REG_PRESENT_VELOCITY_DPS_H] = HIGH_BYTE((int16_t)(positionSensor_getVelocityDegree()*1.0f));
 		regs[REG_PRESENT_TORQUE_CURRENT_MA_L] = LOW_BYTE((int16_t)(API_FOC_Get_Present_Torque_Current()*1.0f));
@@ -603,8 +603,8 @@ int main(void)
 		regs[REG_MOVING] = (uint16_t)(fabsf(positionSensor_getVelocityDegree())) > (uint16_t)(regs[REG_MOVING_THRESHOLD_DPS]) ? 1 : 0;
 
 		// DEBUG RAM Update
-		regs[REG_SETPOINT_POSITION_DEG_L] = LOW_BYTE((int16_t)(setpoint_position_deg*10.0f));
-		regs[REG_SETPOINT_POSITION_DEG_H] = HIGH_BYTE((int16_t)(setpoint_position_deg*10.0f));
+		regs[REG_SETPOINT_POSITION_DEG_L] = LOW_BYTE((int16_t)(setpoint_position_deg*1.0f));
+		regs[REG_SETPOINT_POSITION_DEG_H] = HIGH_BYTE((int16_t)(setpoint_position_deg*1.0f));
 		regs[REG_SETPOINT_VELOCITY_DPS_L] = LOW_BYTE((int16_t)(setpoint_velocity_dps*1.0f));
 		regs[REG_SETPOINT_VELOCITY_DPS_H] = HIGH_BYTE((int16_t)(setpoint_velocity_dps*1.0f));
 		regs[REG_SETPOINT_TORQUE_CURRENT_MA_L] = LOW_BYTE((int16_t)(setpoint_torque_current_mA*1.0f));
