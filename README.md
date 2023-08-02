@@ -200,9 +200,10 @@ Torque | 16b | Torque current feed-forward in mA
 
 ## 6.2. Feedback frame formats
 
-A 32-bit feedback frame contains :
+A 40-bit feedback frame contains :
 
 Field | Length | Value
 ------------ | ------------- | -------------
 Position | 16b | Present position in degrees
-Torque | 16b | Present torque current in mA
+Speed | 16b | Present speed current in degrees per second
+Error status | 8b | Hardware error status. Bit 0: Voltage, Bit 1: Position sensor error, Bit 2: Position sensor no response, Bit 5: Overload, Bit 6: Overheating.
