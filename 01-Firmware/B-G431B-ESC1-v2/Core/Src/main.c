@@ -30,6 +30,7 @@
 #include "protocol.h"
 #include "control_table.h"
 #include "binary_tool.h"
+#include "pid.h"
 
 /* USER CODE END Includes */
 
@@ -258,13 +259,20 @@ int main(void)
 	/* USER CODE BEGIN WHILE */
 	float setpoint_position_deg = 0.0f;
 	float setpoint_velocity_dps = 0.0f;
+	float setpoint_acceleration_dpss = 0.0f;
 	float error_velocity_dps = 0.0f;
 	float setpoint_torque_current_mA = 0.0f;
 	float setpoint_flux_current_mA = 0.0f;
+	float last_setpoint_velocity_dps = 0.0f;
 	uint16_t last_mode = REG_CONTROL_MODE_IDLE;
 	bool can_armed = false;
 	uint32_t can_last_time = 0;
 	uint32_t pid_counter = 0;
+	pid_context_t pid_velocity;
+	pid_context_t pid_position;
+	pid_reset(&pid_position);
+	pid_reset(&pid_velocity);
+
 	while (1)
 	{
 		/* USER CODE END WHILE */
@@ -323,37 +331,24 @@ int main(void)
 						regs[REG_GOAL_VELOCITY_DPS_H] = RxData[3];
 						//HAL_Serial_Print(&serial,"CAN (4)\n");
 					}
-					else if(can_armed && payload_length==6) // Position and speed, Kp/Kd update
-					{
-						// decode payload filed
-						regs[REG_GOAL_POSITION_DEG_L] = RxData[0];
-						regs[REG_GOAL_POSITION_DEG_H] = RxData[1];
-						regs[REG_GOAL_VELOCITY_DPS_L] = RxData[2];
-						regs[REG_GOAL_VELOCITY_DPS_H] = RxData[3];
-						regs[REG_GOAL_KP]  = RxData[4];
-						regs[REG_GOAL_KD]  = RxData[5];
-						//HAL_Serial_Print(&serial,"CAN (6)\n");
-					}
-					else if(payload_length==8) // position, speed, and torque feed forward, Kp/kd update
+					else if(payload_length==6) // position, speed, and torque feed forward, Kp/kd update
 					{
 						if( (RxData[0]==0xFF) && (RxData[1]==0xFF) && (RxData[2]==0xFF) && (RxData[3]==0xFF) &&
-								(RxData[4]==0xFF) && (RxData[5]==0xFF) && (RxData[6]==0xFF) && (RxData[7]==0xFF) )
+								(RxData[4]==0xFF) && (RxData[5]==0xFF))
 						{
 							// init watch dog
 							can_armed = true;
 							can_last_time = HAL_GetTick();
-							regs[REG_CONTROL_MODE] = REG_CONTROL_MODE_POSITION_VELOCITY_TORQUE;
+							regs[REG_CONTROL_MODE] = REG_CONTROL_MODE_POSITION_VELOCITY_TORQUE_VELOCITY_PROFIL;
 							regs[REG_GOAL_POSITION_DEG_L] = 0;
 							regs[REG_GOAL_POSITION_DEG_H] = 0;
 							regs[REG_GOAL_VELOCITY_DPS_L] = 0;
 							regs[REG_GOAL_VELOCITY_DPS_H] = 0;
 							regs[REG_GOAL_TORQUE_CURRENT_MA_L] = 0;
 							regs[REG_GOAL_TORQUE_CURRENT_MA_H] = 0;
-							regs[REG_GOAL_KP]  = 0;
-							regs[REG_GOAL_KD]  = 0;
 							//HAL_Serial_Print(&serial,"CAN request ARM\n");
 						} else if ( (RxData[0]==0x00) && (RxData[1]==0x00) && (RxData[2]==0x00) && (RxData[3]==0x00) &&
-								(RxData[4]==0x00) && (RxData[5]==0x00) && (RxData[6]==0x00) && (RxData[7]==0x00) )
+								(RxData[4]==0x00) && (RxData[5]==0x00))
 						{
 							//Disarm
 							can_armed = false;
@@ -368,8 +363,8 @@ int main(void)
 							regs[REG_GOAL_VELOCITY_DPS_H] = RxData[3];
 							regs[REG_GOAL_TORQUE_CURRENT_MA_L] = RxData[4];
 							regs[REG_GOAL_TORQUE_CURRENT_MA_H] = RxData[5];
-							regs[REG_GOAL_KP]  = RxData[6];
-							regs[REG_GOAL_KD]  = RxData[7];
+//							regs[REG_GOAL_KP]  = RxData[6];
+//							regs[REG_GOAL_KD]  = RxData[7];
 							//HAL_Serial_Print(&serial,"CAN (8)\n");
 						}
 					}
@@ -499,82 +494,93 @@ int main(void)
 				}
 			}
 			break;
-			//		case REG_CONTROL_MODE_POSITION_VELOCITY_TORQUE_VELOCITY_PROFIL:
-			//			if(last_mode!=REG_CONTROL_MODE_POSITION_VELOCITY_TORQUE_VELOCITY_PROFIL)
-			//			{
-			//				pid_reset(&pid_position);
-			//				pid_reset(&pid_velocity);
-			//				// copy EEPROM to RAM
-			//				regs[REG_GOAL_VELOCITY_DPS_L] = regs[REG_MAX_VELOCITY_DPS_L];
-			//				regs[REG_GOAL_VELOCITY_DPS_H] = regs[REG_MAX_VELOCITY_DPS_H];
-			//				regs[REG_GOAL_TORQUE_CURRENT_MA_L] = regs[REG_MAX_CURRENT_MA_L];
-			//				regs[REG_GOAL_TORQUE_CURRENT_MA_H] = regs[REG_MAX_CURRENT_MA_H];
-			//				// reset unused RAM
-			//				regs[REG_GOAL_FLUX_CURRENT_MA_L] = 0;
-			//				regs[REG_GOAL_FLUX_CURRENT_MA_H] = 0;
-			//				// set goal to current position to avoid glicth
-			//				regs[REG_GOAL_POSITION_DEG_L] = LOW_BYTE((int16_t)(10.0f*RADIANS_TO_DEGREES(API_AS5048A_Position_Sensor_Get_Multiturn_Radians())));
-			//				regs[REG_GOAL_POSITION_DEG_H] = HIGH_BYTE((int16_t)(10.0f*RADIANS_TO_DEGREES(API_AS5048A_Position_Sensor_Get_Multiturn_Radians())));
-			//				// reset filtered setpoint
-			//				setpoint_velocity_dps = 0.0f;
-			//				last_setpoint_velocity_dps = 0.0f;
-			//				setpoint_torque_current_mA = 0.0f;
-			//				// set setpoint_position_deg to avoid glitch
-			//				setpoint_position_deg = RADIANS_TO_DEGREES(API_AS5048A_Position_Sensor_Get_Multiturn_Radians());
-			//			}
-			//			{
-			//				// compute position setpoint from goal and EEPROM velocity limit
-			//				float const goal_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_GOAL_POSITION_DEG_L],regs[REG_GOAL_POSITION_DEG_H])))/10.0f;
-			//				float const reg_min_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_MIN_POSITION_DEG_L],regs[REG_MIN_POSITION_DEG_H])));
-			//				float const reg_max_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_MAX_POSITION_DEG_L],regs[REG_MAX_POSITION_DEG_H])));
-			//				float const target_position_deg = fconstrain(goal_position_deg,reg_min_position_deg,reg_max_position_deg);
-			//				// compute velocity&acceleration setpoint using velocity&acceleration trapezoidal profil, RAM goal velocity  and EEPROM velocity & acceleration limit
-			//				float const goal_velocity_dps = (int16_t)(MAKE_SHORT(regs[REG_GOAL_VELOCITY_DPS_L],regs[REG_GOAL_VELOCITY_DPS_H]));
-			//				float const reg_max_velocity_dps = (uint16_t)(MAKE_SHORT(regs[REG_MAX_VELOCITY_DPS_L],regs[REG_MAX_VELOCITY_DPS_H]));
-			//				float const max_velocity_dps = fminf(goal_velocity_dps,reg_max_velocity_dps);
-			//				float const max_acceleration_dpss = 10.0f*(float)(MAKE_SHORT(regs[REG_MAX_ACCELERATION_DPSS_L],regs[REG_MAX_ACCELERATION_DPSS_H]));
-			//				// compute remaining distance between setpoint position to target position
-			//				float const remaining_distance_deg = target_position_deg - setpoint_position_deg;
-			//				// compute maximun velocity to be able to stop at goal position
-			//				float vmax = sqrtf( 2.0f * max_acceleration_dpss * fabsf(remaining_distance_deg) );
-			//				// restore sign
-			//				vmax = ( remaining_distance_deg>0.0f) ? vmax : -vmax;
-			//				// limit maximum velocity, when far from stop
-			//				vmax = fconstrain(vmax,-max_velocity_dps,max_velocity_dps);
-			//				// compute distance between maximun velocity and current velocity
-			//				float delta_v = vmax - setpoint_velocity_dps;
-			//				// now compute new velocity according acceleration
-			//				setpoint_velocity_dps += fconstrain(delta_v, (-max_acceleration_dpss*MAIN_LOO_PERIOD_US/1000000.0f), (max_acceleration_dpss*MAIN_LOO_PERIOD_US/1000000.0f));
-			//				// compute new position setpoint
-			//				setpoint_position_deg += (setpoint_velocity_dps*MAIN_LOO_PERIOD_US/1000000.0f);
-			//				// now compute acceleration setpoint
-			//				setpoint_acceleration_dpss = (setpoint_velocity_dps - last_setpoint_velocity_dps)*1000000.0f/MAIN_LOO_PERIOD_US;
-			//				last_setpoint_velocity_dps =  setpoint_velocity_dps;
-			//				// compute velocity/acceleration feed forwards
-			//				float const pid_vel_kff = (float)(MAKE_SHORT(regs[REG_PID_VELOCITY_KFF_L],regs[REG_PID_VELOCITY_KFF_H]))/1000.0f;
-			//				float const pid_acc_kff = (float)(MAKE_SHORT(regs[REG_PID_ACCELERATION_KFF_L],regs[REG_PID_ACCELERATION_KFF_H]))/100000.0f;
-			//				float const velocity_feed_forward = pid_vel_kff * setpoint_velocity_dps;
-			//				float const acceleration_feed_forward = pid_acc_kff * setpoint_acceleration_dpss;
-			//				// compute position error
-			//				float const error_position_deg = setpoint_position_deg-RADIANS_TO_DEGREES(API_AS5048A_Position_Sensor_Get_Multiturn_Radians());
-			//				// compute torque current setpoint using PID position, current is limited bt goal current and EEPROM current limit
-			//				float const goal_torque_current_mA=(int16_t)(MAKE_SHORT(regs[REG_GOAL_TORQUE_CURRENT_MA_L],regs[REG_GOAL_TORQUE_CURRENT_MA_H]));
-			//				float const reg_max_current_ma = (uint16_t)(MAKE_SHORT(regs[REG_MAX_CURRENT_MA_L],regs[REG_MAX_CURRENT_MA_H]));
-			//				float const reg_reverse = regs[REG_INV_PHASE_MOTOR] == 0 ? 1.0f : -1.0f;
-			//				setpoint_torque_current_mA = ALPHA_CURRENT_SETPOINT*reg_reverse*pid_process_antiwindup_clamp_with_ff(
-			//						&pid_position,
-			//						error_position_deg,
-			//						(float)((int16_t)(MAKE_SHORT(regs[REG_PID_POSITION_KP_L],regs[REG_PID_POSITION_KP_H])))/1.0f,
-			//						(float)((int16_t)(MAKE_SHORT(regs[REG_PID_POSITION_KI_L],regs[REG_PID_POSITION_KI_H])))/100.0f,
-			//						(float)((int16_t)(MAKE_SHORT(regs[REG_PID_POSITION_KD_L],regs[REG_PID_POSITION_KD_H])))/1.0f,
-			//						fminf(goal_torque_current_mA,reg_max_current_ma), // limit is the lowest limit from goal and EEPROM
-			//						0.1f,// ALPHA D
-			//						velocity_feed_forward+acceleration_feed_forward // FF
-			//				) + (1.0f-ALPHA_CURRENT_SETPOINT)*setpoint_torque_current_mA;
-			//				// in this operating mode, flux current is forced to 0
-			//				setpoint_flux_current_mA=0.0f;
-			//			}
-			//			break;
+			case REG_CONTROL_MODE_POSITION_VELOCITY_TORQUE_VELOCITY_PROFIL:
+				if(last_mode!=REG_CONTROL_MODE_POSITION_VELOCITY_TORQUE_VELOCITY_PROFIL)
+				{
+					pid_reset(&pid_position);
+					pid_reset(&pid_velocity);
+					// copy EEPROM to RAM
+					//regs[REG_GOAL_VELOCITY_DPS_L] = regs[REG_MAX_VELOCITY_DPS_L];
+					//regs[REG_GOAL_VELOCITY_DPS_H] = regs[REG_MAX_VELOCITY_DPS_H];
+					//regs[REG_GOAL_TORQUE_CURRENT_MA_L] = regs[REG_MAX_CURRENT_MA_L];
+					//regs[REG_GOAL_TORQUE_CURRENT_MA_H] = regs[REG_MAX_CURRENT_MA_H];
+
+					// reset goal velocity
+					regs[REG_GOAL_VELOCITY_DPS_L] = 0;
+					regs[REG_GOAL_VELOCITY_DPS_H] = 0;
+					// reset feed-forward torque
+					regs[REG_GOAL_TORQUE_CURRENT_MA_L] = 0;
+					regs[REG_GOAL_TORQUE_CURRENT_MA_H] = 0;
+					// reset flux refenrece
+					regs[REG_GOAL_FLUX_CURRENT_MA_L] = 0;
+					regs[REG_GOAL_FLUX_CURRENT_MA_H] = 0;
+
+					// set goal position to present position to avoid mechanical glicth
+					regs[REG_GOAL_POSITION_DEG_L] = LOW_BYTE((int16_t)(1.0f*positionSensor_getDegreeMultiturn()));
+					regs[REG_GOAL_POSITION_DEG_H] = HIGH_BYTE((int16_t)(1.0f*positionSensor_getDegreeMultiturn()));
+					// reset setpoints
+					setpoint_position_deg = 0.0f;
+					setpoint_velocity_dps = 0.0f;
+					error_velocity_dps = 0.0f;
+					setpoint_torque_current_mA = 0.0f;
+					setpoint_flux_current_mA = 0.0f;
+					last_setpoint_velocity_dps = 0.0f;
+					// set setpoint_position_deg to avoid glitch
+					setpoint_position_deg = positionSensor_getDegreeMultiturn();
+				}
+				{
+					// compute position set-point from goal and EEPROM position limits
+					float const goal_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_GOAL_POSITION_DEG_L],regs[REG_GOAL_POSITION_DEG_H])))/1.0f;
+					float const reg_min_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_MIN_POSITION_DEG_L],regs[REG_MIN_POSITION_DEG_H])))*1.0f;
+					float const reg_max_position_deg = (float)((int16_t)(MAKE_SHORT(regs[REG_MAX_POSITION_DEG_L],regs[REG_MAX_POSITION_DEG_H])))*1.0f;
+					float const target_position_deg = fconstrain(goal_position_deg,reg_min_position_deg,reg_max_position_deg);
+					// compute velocity&acceleration setpoint using velocity&acceleration trapezoidal profil, RAM goal velocity  and EEPROM velocity & acceleration limit
+					float const goal_velocity_dps = (int16_t)(MAKE_SHORT(regs[REG_GOAL_VELOCITY_DPS_L],regs[REG_GOAL_VELOCITY_DPS_H]));
+					float const reg_max_velocity_dps = (uint16_t)(MAKE_SHORT(regs[REG_MAX_VELOCITY_DPS_L],regs[REG_MAX_VELOCITY_DPS_H]));
+					float const max_velocity_dps = fminf(goal_velocity_dps,reg_max_velocity_dps);
+					float const max_acceleration_dpss = 1.0f*(float)(MAKE_SHORT(regs[REG_MAX_ACCELERATION_DPSS_L],regs[REG_MAX_ACCELERATION_DPSS_H]));
+					// compute remaining distance between setpoint position to target position
+					float const remaining_distance_deg = target_position_deg - setpoint_position_deg;
+					// compute maximun velocity to be able to stop at goal position
+					float vmax = sqrtf( 2.0f * max_acceleration_dpss * fabsf(remaining_distance_deg) );
+					// restore sign
+					vmax = ( remaining_distance_deg>0.0f) ? vmax : -vmax;
+					// limit maximum velocity, when far from stop
+					vmax = fconstrain(vmax,-max_velocity_dps,max_velocity_dps);
+					// compute distance between maximun velocity and current velocity
+					float delta_v = vmax - setpoint_velocity_dps;
+					// now compute new velocity according acceleration
+					setpoint_velocity_dps += fconstrain(delta_v, (-max_acceleration_dpss*PID_LOOP_PERIOD/1000000.0f), (max_acceleration_dpss*PID_LOOP_PERIOD/1000000.0f));
+					// compute new position setpoint
+					setpoint_position_deg += (setpoint_velocity_dps*PID_LOOP_PERIOD/1000000.0f);
+					// now compute acceleration setpoint
+					setpoint_acceleration_dpss = (setpoint_velocity_dps - last_setpoint_velocity_dps)*1000000.0f/PID_LOOP_PERIOD;
+					last_setpoint_velocity_dps =  setpoint_velocity_dps;
+					// compute velocity/acceleration feed forwards
+					float const pid_vel_kff = (float)(MAKE_SHORT(regs[REG_PID_VELOCITY_KFF_L],regs[REG_PID_VELOCITY_KFF_H]))/1000.0f;
+					float const pid_acc_kff = (float)(MAKE_SHORT(regs[REG_PID_ACCELERATION_KFF_L],regs[REG_PID_ACCELERATION_KFF_H]))/100000.0f;
+					float const velocity_feed_forward = pid_vel_kff * setpoint_velocity_dps;
+					float const acceleration_feed_forward = pid_acc_kff * setpoint_acceleration_dpss;
+					// compute position error
+					float const error_position_deg = setpoint_position_deg-positionSensor_getDegreeMultiturn();
+					// compute torque current setpoint using PID position, current is limited bt goal current and EEPROM current limit
+					float const goal_torque_current_mA=(int16_t)(MAKE_SHORT(regs[REG_GOAL_TORQUE_CURRENT_MA_L],regs[REG_GOAL_TORQUE_CURRENT_MA_H]));
+					float const reg_max_current_ma = (uint16_t)(MAKE_SHORT(regs[REG_MAX_CURRENT_MA_L],regs[REG_MAX_CURRENT_MA_H]));
+					float const reg_reverse = regs[REG_INV_PHASE_MOTOR] == 0 ? 1.0f : -1.0f;
+					setpoint_torque_current_mA = ALPHA_CURRENT_SETPOINT*reg_reverse*pid_process_antiwindup_clamp_with_ff(
+							&pid_position,
+							error_position_deg,
+							(float)((int16_t)(MAKE_SHORT(regs[REG_PID_POSITION_KP_L],regs[REG_PID_POSITION_KP_H])))/1.0f,
+							(float)((int16_t)(MAKE_SHORT(regs[REG_PID_POSITION_KI_L],regs[REG_PID_POSITION_KI_H])))/100.0f,
+							(float)((int16_t)(MAKE_SHORT(regs[REG_PID_POSITION_KD_L],regs[REG_PID_POSITION_KD_H])))/1.0f,
+							fminf(goal_torque_current_mA,reg_max_current_ma), // limit is the lowest limit from goal and EEPROM
+							0.1f,// ALPHA D
+							velocity_feed_forward+acceleration_feed_forward // FF
+					) + (1.0f-ALPHA_CURRENT_SETPOINT)*setpoint_torque_current_mA;
+					// in this operating mode, flux current is forced to 0
+					setpoint_flux_current_mA=0.0f;
+				}
+				break;
 
 			default: // IDLE of other unknown values
 				// reset unused RAM

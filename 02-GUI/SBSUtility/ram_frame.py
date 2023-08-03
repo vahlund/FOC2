@@ -33,8 +33,8 @@ class ram_frame(LabelFrame):
 		self.gui_entry("Goal Velocity", "goal_velocity", 0, True, True, True, 0x85, 1, 2 )
 		self.gui_entry("FeedForward Torque Current", "goal_torque_current", 0, True, True, True, 0x87, 1, 2 )
 		self.gui_entry("Goal Flux Current", "goal_flux_current", 0, True, True, True, 0x89, 1, 2 )
-		self.gui_entry("Position Kp", "goal_kp", 0, True, True, True, 0x8B, 1, 1 )
-		self.gui_entry("Velocity Kd", "goal_kd", 0, True, True, True, 0x8C, 1, 1 )
+		#self.gui_entry("Position Kp", "goal_kp", 0, True, True, True, 0x8B, 1, 1 )
+		#self.gui_entry("Velocity Kd", "goal_kd", 0, True, True, True, 0x8C, 1, 1 )
 		self.gui_spacer("---")
 		self.gui_entry("Manual Synchro Offset", "goal_synchro_offset", 0, True, True, True, 0x8D, 1, 2 )
 		self.gui_entry("Force Open Loop", "goal_open_loop", 0, True, True, True, 0x8F, 1, 1 )
@@ -183,8 +183,8 @@ class ram_frame(LabelFrame):
 				self.variables['goal_velocity_local'].set(str( goal_velocity ))
 				self.variables['goal_torque_current_local'].set(str( goal_torque_current ))
 				self.variables['goal_flux_current_local'].set(str( goal_flux_current ))
-				self.variables['goal_kd_local'].set(str( kd ))
-				self.variables['goal_kp_local'].set(str( kp ))
+				#self.variables['goal_kd_local'].set(str( kd ))
+				#self.variables['goal_kp_local'].set(str( kp ))
 				self.variables['goal_synchro_offset_local'].set(str( goal_synchro_offset ))
 				self.variables['goal_open_loop_local'].set(str( result[15] ))
 	
@@ -197,8 +197,8 @@ class ram_frame(LabelFrame):
 			self.variables['goal_torque_current_servo'].set(str( goal_torque_current ))
 			self.variables['goal_flux_current_servo'].set(str( goal_flux_current ))
 			
-			self.variables['goal_kp_servo'].set(str( kp ))
-			self.variables['goal_kd_servo'].set(str( kd ))
+			#self.variables['goal_kp_servo'].set(str( kp ))
+			#self.variables['goal_kd_servo'].set(str( kd ))
 
 			self.variables['goal_synchro_offset_servo'].set(str( goal_synchro_offset ))
 			self.variables['goal_open_loop_servo'].set(str( result[15] ))

@@ -115,6 +115,7 @@ ID | 1 | ID of the controler (used for both USB and CAN). **Values: 000h < ID < 
 Min Position | 0 | Minimum position in degress, limiting position control
 Max Position | 1000 | Maximum position in degrees (position control)
 Max Velocity | 5000 | Maximum velocity in degrees per second (velocity control)
+Max Acceleration | 32000 | Maximum acceleration in degrees per second squared
 Max Current | 500 | Maximum motor current in mA (FOC)
 Max Temperature | 60 | Maximum operating temperaturein °C. **Values: <70**
 Min Voltage | 6 | Minimum operating power supply voltage. **Values: <30**
@@ -124,23 +125,25 @@ Motor Pole Pairs | 14 | Pole pairs of the motor
 Motor Synchro Angle | 0 | Offset in degrees between physical and electrical angles. **Updated by auto-calibration**
 Motor Phase Inv | 0 | Motor phase inversion. **Values: {0,1} Updated by auto-calibration**
 Field Weakening K | 255 | Field weakening. **Values: 255**
+PID Position P | 30 | PID P value for position.
+PID Position I | 0 | PID I value for position.
+PID Position D | 100 | PID D value for position.
+PID Velocity FF | 0 | PID FF value for velocity.
+PID acceleration FF | 0 | PID FF value for acceleration.
 PID Flux current KP | 400 | Kp of Flux PI FOC.
 PID Torque current KP | 400 | Kp of Torque PI FOC.
+EWMA Encoder | 255 | Encoder Noise Filter.
 
 ## 5.2 Control registers (RAM)
 
 Field | Default Value | Description
 ------------ | ------------- | -------------
 LED | 0 | STATUS LED ON/OFF command. **Values: {0:OFF,1:ON}**
-Control Mode | 0 | Operating mode. **Values: {0:IDLE,1:Position/VelocityTorque control}**
+Control Mode | 0 | Operating mode. **Values: {0:IDLE, ~~1:Position/Velocity/Torque control,~~ 2:Position/Velocity/Torque/Velocity control}**
 Goal Position | 0 | Goal position in degrees (position control)
 Goal Velocity | 0 | Goal velocity in degrees per second (velocity control)
 FF Torque Current | 0 | Feed-forward torque current in mA (FOC, Iq)
 Goal Flux Current | 0 | Reference flux current in mA (FOC, Idref)
-Position Kp | 0 | Kp of Position/Velocity control. **Values: 0<Kp<255**
-Velocity Kd | 0 | Kd of Position/Velocity control. **Values: 0<Kp<255**
-
-**Warning : A high value of Kp or Kd may damage the actuator.**
 
 # 6. CAN protocol
 
@@ -162,28 +165,17 @@ For 16-bit fields, low byte first position, high byte second position.
 
 ### 6.1.1. Full control frame
 
-A full control frame has a 64-bit payload.
+A full control frame has a 48-bit payload.
 
 Field | Length | Value
 ------------ | ------------- | -------------
 Position | 16b | Position set-point in degrees
 Velocity | 16b | Velocity set-point in degrees per second
 Torque | 16b | Torque current feed-forward in mA
-Kp | 8b | Position control
-Kd | 8b | Velocity control
 
 ***Warning : A high value of Kp or Kd may damage the actuator.***
 
 ### 6.1.2. Shortened control frames
-
-A 48-bit control frame contains :
-
-Field | Length | Value
------------- | ------------- | -------------
-Position | 16b | Position set-point in degrees
-Velocity | 16b | Velocity set-point in degrees per second
-Kp | 8b | Position control
-Kd | 8b | Velocity control
 
 A 32-bit control frame contains :
 
