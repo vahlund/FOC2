@@ -18,6 +18,7 @@ import cProfile
 def main():
 	## change COM port here
 	servo = servo_protocol2()
+	servo.open('/dev/tty.usbmodem14603',1000000)
 	window = Tk()
 	window.title(" 8yServoGUI")
 	window.geometry("1600x1020")

@@ -17,6 +17,7 @@ import cProfile
 
 def main():
 	servo = servo_protocol2()
+	servo.open('/dev/tty.usbmodem14603',1000000)
 	window = Tk()
 	window.title(" 8yServoGUI")
 	window.geometry("1600x1020")
@@ -24,7 +25,7 @@ def main():
 
 	fi = id_frame(window,servo)
 	fe = eeprom_frame(window,servo,fi)
-	ft =trace_frame(window,servo,fe,fi)
+	ft = trace_frame(window,servo,fe,fi)
 	fr = ram_frame(window,servo,ft,fi)
 
 	fi.grid(column = 0, row = 0, sticky='nsew')		
