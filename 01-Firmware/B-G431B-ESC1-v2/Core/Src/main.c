@@ -163,13 +163,13 @@ static void FDCAN_Config(void)
 	/* Configure global filter:
      Filter all remote frames with STD and EXT ID
      Reject non matching frames with STD ID and EXT ID */
-	if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE) != HAL_OK)
+	if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE) != HAL_OK)
 	{
 		Error_Handler();
 	}
 
 	HAL_GPIO_WritePin(CAN_SHDN_GPIO_Port, CAN_SHDN_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(CAN_TERM_GPIO_Port, CAN_TERM_Pin, GPIO_PIN_RESET); // SET means activating R120
+	HAL_GPIO_WritePin(CAN_TERM_GPIO_Port, CAN_TERM_Pin, GPIO_PIN_SET); // SET means activating R120
 
 	/* Start the FDCAN module */
 	if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK)
@@ -340,8 +340,8 @@ int main(void)
 							can_armed = true;
 							can_last_time = HAL_GetTick();
 							regs[REG_CONTROL_MODE] = REG_CONTROL_MODE_POSITION_VELOCITY_TORQUE_VELOCITY_PROFIL;
-							regs[REG_GOAL_POSITION_DEG_L] = 0;
-							regs[REG_GOAL_POSITION_DEG_H] = 0;
+							regs[REG_GOAL_POSITION_DEG_L] = regs[REG_PRESENT_POSITION_DEG_L];
+							regs[REG_GOAL_POSITION_DEG_H] = regs[REG_PRESENT_POSITION_DEG_H];
 							regs[REG_GOAL_VELOCITY_DPS_L] = 0;
 							regs[REG_GOAL_VELOCITY_DPS_H] = 0;
 							regs[REG_GOAL_TORQUE_CURRENT_MA_L] = 0;
@@ -382,6 +382,7 @@ int main(void)
 					//					  HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1,&TxHeader,TxData);
 
 					// then reply by a status frame (shortened)
+					//HAL_GPIO_WritePin(STATUS_GPIO_Port,STATUS_Pin,GPIO_PIN_SET);
 					TxHeader.Identifier = 0x10+regs[REG_ID]; // each ESC replies with a message identifier = it is own ID
 					TxHeader.DataLength = FDCAN_DLC_BYTES_5;
 					TxData[0] = regs[REG_PRESENT_POSITION_DEG_L];
